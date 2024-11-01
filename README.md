@@ -110,7 +110,6 @@ Running `vendor/bin/zipit archive.zip` will create `archive.zip` with `file1.txt
 
 - PHP 7.4 or higher
 - Composer
-- Symfony Components (Console, Filesystem)
 
 ## License
 
