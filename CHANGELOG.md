@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/devuri/zipit/compare/v0.2.1...v0.2.2) (2024-11-01)
+
+
+### Bug Fixes
+
+* option to specify output file name and path in the configuration file. ([bb2674c](https://github.com/devuri/zipit/commit/bb2674c5565e54d63c945088179a97963584fca0))
+
 ## [0.2.1](https://github.com/devuri/zipit/compare/v0.2.0...v0.2.1) (2024-11-01)
 
 
