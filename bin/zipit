@@ -8,4 +8,5 @@ use Urisoft\ZipItCommand;
 
 $application = new Application();
 $application->add(new ZipItCommand());
+$application->setDefaultCommand('zipit', true);
 $application->run();
