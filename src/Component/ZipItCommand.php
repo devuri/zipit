@@ -71,6 +71,8 @@ class ZipItCommand extends Command
         $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
         $filesystem = new Filesystem();
 
+        $outputFileName = $config['outputFile'] ?? $outputFileName;
+
         if (file_exists($outputFileName)) {
             $filesystem->remove($outputFileName);
         }
