@@ -86,6 +86,9 @@ class ZipItCommand extends Command
         $progressBar = new ProgressBar($output, \count($files));
         $progressBar->start();
 
+        $filesAdded = [];
+        $totalSize = 0;
+
         foreach ($files as $file) {
             $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
             if ( ! $filePath || ! $filesystem->exists($filePath)) {
@@ -101,12 +104,30 @@ class ZipItCommand extends Command
             }
 
             $this->addFileToZip($zip, $filePath, $baseDir, $excludes);
+            $filesAdded[] = $filePath;
+            $totalSize += filesize($filePath);
             $progressBar->advance();
         }
 
         $progressBar->finish();
         $zip->close();
+
+        // Check if the zip file was successfully created and contains files
+        if ( ! file_exists($outputFileName) || 0 === \count($filesAdded)) {
+            $io->error("Failed to create a valid zip file. No files were added to the archive.");
+
+            return Command::FAILURE;
+        }
+
+        // Pretty output with useful information
         $io->success("Zip file created successfully.");
+        $io->section("Summary");
+        $io->listing($filesAdded);
+        $io->text([
+            "Total files: " . \count($filesAdded),
+            "Total size: " . $this->formatSize($totalSize),
+            "Zip file location: " . realpath($outputFileName),
+        ]);
 
         return Command::SUCCESS;
     }
@@ -139,5 +160,17 @@ class ZipItCommand extends Command
             $relativePath = substr($filePath, \strlen($basePath) + 1);
             $zip->addFile($filePath, $relativePath);
         }
+    }
+
+    private function formatSize($size)
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $unit = 0;
+        while ($size >= 1024 && $unit < \count($units) - 1) {
+            $size /= 1024;
+            $unit++;
+        }
+
+        return round($size, 2) . ' ' . $units[$unit];
     }
 }
