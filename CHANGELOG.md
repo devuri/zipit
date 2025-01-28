@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/devuri/zipit/compare/v0.2.2...v0.2.3) (2025-01-28)
+
+
+### Bug Fixes
+
+* update no longer requires output arg or excludes in config array ([454711f](https://github.com/devuri/zipit/commit/454711f462f608b229be18eb4cd1c2868f7d9406))
+
 ## [0.2.2](https://github.com/devuri/zipit/compare/v0.2.1...v0.2.2) (2024-11-01)
 
 
