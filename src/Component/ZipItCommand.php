@@ -30,7 +30,7 @@ class ZipItCommand extends Command
     {
         $this
             ->setDescription('Creates a zip file based on the configuration in .zipit-conf.php')
-            ->addArgument('output', InputArgument::REQUIRED, 'The name of the output zip file (must end with .zip)')
+            ->addArgument('output', InputArgument::OPTIONAL, 'The name of the output zip file (must end with .zip)', null)
             ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', getcwd() . '/.zipit-conf.php');
     }
 
@@ -40,6 +40,10 @@ class ZipItCommand extends Command
 
         $outputFileName = $input->getArgument('output');
         $configFilePath = $input->getArgument('config');
+
+        if ( ! $outputFileName) {
+            $outputFileName = getcwd() . '/zipit-output.zip';
+        }
 
         if ('zip' !== pathinfo($outputFileName, PATHINFO_EXTENSION)) {
             $io->error("The output file name must have a .zip extension.");
@@ -59,15 +63,24 @@ class ZipItCommand extends Command
             return Command::FAILURE;
         }
 
-        $config = require $configFilePath;
-        if ( ! \is_array($config) || ! isset($config['files'], $config['baseDir'], $config['exclude']) || ! \is_array($config['files']) || ! \is_array($config['exclude'])) {
-            $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir', 'files', and 'exclude' keys.");
+        $getConfig = require $configFilePath;
+
+        // Fix for the double-dollar bug:
+        if ( ! \is_array($getConfig) || ! isset($getConfig['files'], $getConfig['baseDir']) || ! \is_array($getConfig['files'])) {
+            $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir' and 'files' keys.");
 
             return Command::FAILURE;
         }
 
+        $config = array_merge([
+            'baseDir' => getcwd(),
+            'files'   => [],
+            'exclude' => [],
+            'outputFile' => getcwd() . '/project-archive.zip',
+        ], $getConfig);
+
         $baseDir = realpath($config['baseDir']);
-        $files = $config['files'];
+        $files   = $config['files'];
         $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
         $filesystem = new Filesystem();
 
@@ -85,11 +98,13 @@ class ZipItCommand extends Command
         }
 
         $io->title("Creating Zip Archive");
+        $io->writeln('<info>Starting to zip the configured files...</info>');
+
         $progressBar = new ProgressBar($output, \count($files));
         $progressBar->start();
 
         $filesAdded = [];
-        $totalSize = 0;
+        $totalSize  = 0;
 
         foreach ($files as $file) {
             $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
@@ -112,6 +127,8 @@ class ZipItCommand extends Command
         }
 
         $progressBar->finish();
+        $io->newLine();
+
         $zip->close();
 
         // Check if the zip file was successfully created and contains files
@@ -125,16 +142,17 @@ class ZipItCommand extends Command
         $io->success("Zip file created successfully.");
         $io->section("Summary");
         $io->listing($filesAdded);
+
         $io->text([
-            "Total files: " . \count($filesAdded),
-            "Total size: " . $this->formatSize($totalSize),
-            "Zip file location: " . realpath($outputFileName),
+            "<info>Total files:</info> " . \count($filesAdded),
+            "<info>Total size:</info> " . $this->formatSize($totalSize),
+            "<info>Zip file location:</info> " . realpath($outputFileName),
         ]);
 
         return Command::SUCCESS;
     }
 
-    private function isExcluded($filePath, $excludes)
+    private function isExcluded($filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
             if (0 === strpos($filePath, $exclude)) {
@@ -145,7 +163,7 @@ class ZipItCommand extends Command
         return false;
     }
 
-    private function addFileToZip(ZipArchive $zip, $filePath, $basePath, $excludes): void
+    private function addFileToZip(ZipArchive $zip, string $filePath, string $basePath, array $excludes): void
     {
         if (is_dir($filePath)) {
             $iterator = new RecursiveIteratorIterator(
@@ -164,7 +182,7 @@ class ZipItCommand extends Command
         }
     }
 
-    private function formatSize($size)
+    private function formatSize($size): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $unit = 0;
