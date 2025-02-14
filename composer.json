@@ -74,11 +74,14 @@
             "composer test",
             "composer lint",
             "composer install -q",
-            "composer phpdoc -q",
             "composer test",
             "composer test-covers",
             "composer lint",
-            "composer no-dev -q"
+            "composer no-dev -q",
+            "box compile",
+            "box info zipit",
+            "chmod +x zipit",
+            "php zipit --help"
         ],
         "phpstan": "@php ./vendor/bin/phpstan analyse",
         "psalm": "vendor/bin/psalm",
