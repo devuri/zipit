@@ -1,22 +1,25 @@
 # ZipIt
 
-**ZipIt** is a simple, flexible PHP CLI tool for creating zip archives, providing features like progress bars, customizable output locations, and recursive file archiving.
+**ZipIt** is a simple, flexible PHP CLI tool for creating zip archives, providing features like progress bars, customizable output locations, and recursive file archiving. It now includes a `copy` command to duplicate files instead of zipping them.
 
 ## Features
 
+- **Standalone Executable**: ZipIt is now a fully compiled executable file, which can be stored in your project (e.g., `bin/zipit`).
 - **Configurable**: Define the base directory, files to include, and exclusions in a `.zipit-conf.php` file.
 - **Customizable Output**: Optionally specify the output file name and path in the configuration file.
 - **Recursive Archiving**: Automatically includes directories and their contents.
 - **Styled Output**: Uses color-coded messages for warnings, errors, and success feedback.
 - **Progress Bar**: Visual progress for long-running operations.
 - **Custom Config Path**: Option to specify a custom configuration file path.
+- **Copy Command**: Use `bin/zipit copy` to copy files instead of zipping them.
 
 ## Installation
 
-Add **ZipIt** to your project with Composer:
+Download the `zipit` executable and place it in your project directory, for example:
 
 ```bash
-composer require devuri/zipit
+mv zipit bin/zipit
+chmod +x bin/zipit
 ```
 
 ## Configuration
@@ -52,14 +55,14 @@ return [
 
 ## Usage
 
-After setting up the `.zipit-conf.php` file, use the `zipit` command to create a zip archive. The `zipit` executable will be available in `vendor/bin` after installation.
+After setting up the `.zipit-conf.php` file, use the `zipit` command to create a zip archive.
 
 ### Running ZipIt
 
 Run **ZipIt** from your project’s root directory:
 
 ```bash
-vendor/bin/zipit output.zip
+bin/zipit output.zip
 ```
 
 - **output.zip**: The name of the zip file to create. If `outputFile` is set in the configuration file, that path will override this argument.
@@ -69,8 +72,18 @@ vendor/bin/zipit output.zip
 You can specify a custom configuration file path:
 
 ```bash
-vendor/bin/zipit output.zip /path/to/.zipit-conf.php
+bin/zipit output.zip /path/to/.zipit-conf.php
 ```
+
+### Copy Command
+
+If you want to copy files instead of zipping them, use the `copy` command:
+
+```bash
+bin/zipit copy source_file destination_file
+```
+
+This will copy `source_file` to `destination_file`.
 
 ### Example
 
@@ -105,7 +118,7 @@ return [
 ];
 ```
 
-Running `vendor/bin/zipit archive.zip` will create `project-archive.zip` in the project root if `outputFile` is set. Otherwise, it will create `archive.zip` with `file1.txt`, `file2.txt`, and `directory1/file3.txt`, while excluding `directory1/exclude-this.txt`.
+Running `bin/zipit archive.zip` will create `project-archive.zip` in the project root if `outputFile` is set. Otherwise, it will create `archive.zip` with `file1.txt`, `file2.txt`, and `directory1/file3.txt`, while excluding `directory1/exclude-this.txt`.
 
 ## Output
 
@@ -114,11 +127,11 @@ Running `vendor/bin/zipit archive.zip` will create `project-archive.zip` in the 
 
 ## Requirements
 
-- PHP 7.4 or higher
-- Composer
+- PHP  8.1 or higher
 
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 Enjoy easy archiving with **ZipIt**!
+
