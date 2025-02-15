@@ -83,7 +83,7 @@
             "chmod +x zipit",
             "php zipit --help"
         ],
-		"compile": [
+        "compile": [
             "composer install -q",
             "composer show --tree",
             "composer test",
