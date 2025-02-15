@@ -24,31 +24,26 @@ use ZipArchive;
 
 class ZipItCommand extends Command
 {
+    use OutputTrait;
+
     protected static $defaultName = 'zipit';
 
     protected function configure(): void
     {
         $this
             ->setDescription('Creates a zip file based on the configuration in .zipit-conf.php')
-            ->addArgument('output', InputArgument::OPTIONAL, 'The name of the output zip file (must end with .zip)', null)
-            ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', getcwd() . '/.zipit-conf.php');
+            ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', null);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $io = new SymfonyStyle($input, $output);
 
-        $outputFileName = $input->getArgument('output');
         $configFilePath = $input->getArgument('config');
+        $outputTime = time();
 
-        if ( ! $outputFileName) {
-            $outputFileName = getcwd() . '/zipit-output.zip';
-        }
-
-        if ('zip' !== pathinfo($outputFileName, PATHINFO_EXTENSION)) {
-            $io->error("The output file name must have a .zip extension.");
-
-            return Command::FAILURE;
+        if ( ! $configFilePath) {
+            $configFilePath = getcwd() . '/.zipit-conf.php';
         }
 
         if ('.zipit-conf.php' !== basename($configFilePath)) {
@@ -72,26 +67,34 @@ class ZipItCommand extends Command
             return Command::FAILURE;
         }
 
-        $config = array_merge([
-            'baseDir' => getcwd(),
-            'files'   => [],
-            'exclude' => [],
-            'outputFile' => getcwd() . '/project-archive.zip',
-        ], $getConfig);
+        $config = $this->setOutputConfig($outputTime, $getConfig);
 
         $baseDir = realpath($config['baseDir']);
         $files   = $config['files'];
         $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
         $filesystem = new Filesystem();
 
+        $outputDirectory = $config['outputDir'];
         $outputFileName = $config['outputFile'] ?? $outputFileName;
+        $outputZipBuild = $outputDirectory . DIRECTORY_SEPARATOR . $outputFileName;
+        if ('zip' !== pathinfo($outputZipBuild, PATHINFO_EXTENSION)) {
+            $io->error("The output file name must have a .zip extension.");
 
-        if (file_exists($outputFileName)) {
-            $filesystem->remove($outputFileName);
+            return Command::FAILURE;
+        }
+
+        $filePath = realpath($outputZipBuild);
+        if ( ! $filesystem->exists($filePath)) {
+            $io->warning("File or directory does not exist.");
+            $filesystem->mkdir($outputDirectory);
+        }
+
+        if (file_exists($outputZipBuild)) {
+            $filesystem->remove($outputZipBuild);
         }
 
         $zip = new ZipArchive();
-        if (true !== $zip->open($outputFileName, ZipArchive::CREATE)) {
+        if (true !== $zip->open($outputZipBuild, ZipArchive::CREATE)) {
             $io->error("Failed to create zip file.");
 
             return Command::FAILURE;
@@ -132,7 +135,7 @@ class ZipItCommand extends Command
         $zip->close();
 
         // Check if the zip file was successfully created and contains files
-        if ( ! file_exists($outputFileName) || 0 === \count($filesAdded)) {
+        if ( ! file_exists($outputZipBuild) || 0 === \count($filesAdded)) {
             $io->error("Failed to create a valid zip file. No files were added to the archive.");
 
             return Command::FAILURE;
@@ -146,7 +149,7 @@ class ZipItCommand extends Command
         $io->text([
             "<info>Total files:</info> " . \count($filesAdded),
             "<info>Total size:</info> " . $this->formatSize($totalSize),
-            "<info>Zip file location:</info> " . realpath($outputFileName),
+            "<info>Zip file location:</info> " . realpath($outputZipBuild),
         ]);
 
         return Command::SUCCESS;

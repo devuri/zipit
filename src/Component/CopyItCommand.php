@@ -23,68 +23,64 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class CopyItCommand extends Command
 {
-    protected static $defaultName = 'copyit';
+    use OutputTrait;
+
+    protected static $defaultName = 'copy';
 
     protected function configure(): void
     {
         $this
             ->setDescription('Copies files based on the configuration in .zipit-conf.php to a specified output directory')
-            ->addArgument('output', InputArgument::OPTIONAL, 'The path to the output directory', null)
-            ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', getcwd() . '/.zipit-conf.php');
+            ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', null);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $io = new SymfonyStyle($input, $output);
 
-        // Output directory
-        $outputDir = $input->getArgument('output');
-        // Fallback if no output directory is provided
-        if (!$outputDir) {
-            $outputDir = getcwd() . '/copy_out';
-        }
-
-        // Config file
         $configFilePath = $input->getArgument('config');
+        $outputTime = time();
+
+        if ( ! $configFilePath) {
+            $configFilePath = getcwd() . '/.zipit-conf.php';
+        }
 
         // Validation checks
         if ('.zipit-conf.php' !== basename($configFilePath)) {
             $io->error("The configuration file must be named .zipit-conf.php.");
+
             return Command::FAILURE;
         }
 
-        if (!file_exists($configFilePath)) {
+        if ( ! file_exists($configFilePath)) {
             $io->error("Configuration file .zipit-conf.php not found at $configFilePath.");
+
             return Command::FAILURE;
         }
 
         // Load configuration
         $getConfig = require $configFilePath;
-        if (!\is_array($getConfig) || !isset($getConfig['files'], $getConfig['baseDir']) || !\is_array($getConfig['files'])) {
+        if ( ! \is_array($getConfig) || ! isset($getConfig['files'], $getConfig['baseDir']) || ! \is_array($getConfig['files'])) {
             $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir' and 'files' keys.");
+
             return Command::FAILURE;
         }
 
         // Merge with defaults
-        $config = array_merge([
-            'baseDir'    => getcwd(),
-            'files'      => [],
-            'exclude'    => [],
-            'outputFile' => getcwd() . '/copyOut',
-        ], $getConfig);
+        $config = $this->setOutputConfig($outputTime, $getConfig);
 
         $baseDir = realpath($config['baseDir']);
         $files   = $config['files'];
-        $excludes = array_map('realpath', array_map(fn($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
+        $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
 
         $filesystem = new Filesystem();
 
-		$outputDirectory = $config['outputFile'] ?? $outputDir;
+        $outputDirectory = self::getOutputDirectory($config, $outputDir);
 
         // Create or clear the output directory
         if (file_exists($outputDirectory)) {
             $filesystem->remove($outputDirectory);
-			$io->writeln('<info>Clear the output directory...</info>');
+            $io->writeln('<info>Clear the output directory...</info>');
         }
 
         $filesystem->mkdir($outputDirectory);
@@ -100,13 +96,15 @@ class CopyItCommand extends Command
 
         foreach ($files as $file) {
             $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
-            if (!$filePath || !$filesystem->exists($filePath)) {
+            if ( ! $filePath || ! $filesystem->exists($filePath)) {
                 $io->warning("File or directory '$file' does not exist.");
+
                 continue;
             }
 
             if ($this->isExcluded($filePath, $excludes)) {
                 $io->note("Skipping excluded file or directory: '$file'");
+
                 continue;
             }
 
@@ -122,6 +120,7 @@ class CopyItCommand extends Command
         // If no files were actually copied
         if (0 === \count($filesCopied)) {
             $io->warning("No files were copied. Please check your configuration.");
+
             return Command::FAILURE;
         }
 
@@ -139,6 +138,16 @@ class CopyItCommand extends Command
         return Command::SUCCESS;
     }
 
+    protected static function getOutputDirectory($config, $defaultDir = 'copyOut'): string
+    {
+        $outputDirectory = $config['outputDir'] ?? $defaultDir;
+
+        $directory = explode('.', $outputDirectory);
+        $outputFile = explode('.', $config['outputFile']);
+
+        return DIRECTORY_SEPARATOR . $directory[0] . DIRECTORY_SEPARATOR . $outputFile[0];
+    }
+
     private function isExcluded($filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
@@ -147,6 +156,7 @@ class CopyItCommand extends Command
                 return true;
             }
         }
+
         return false;
     }
 
@@ -191,7 +201,7 @@ class CopyItCommand extends Command
             $relativePath = substr($filePath, \strlen($basePath) + 1);
             $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
 
-            $filesystem->mkdir(dirname($destination));  // Ensure the directory exists
+            $filesystem->mkdir(\dirname($destination));  // Ensure the directory exists
             $filesystem->copy($filePath, $destination, true);
 
             $filesCopied[] = $filePath;
