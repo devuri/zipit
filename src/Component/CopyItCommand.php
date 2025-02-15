@@ -75,7 +75,7 @@ class CopyItCommand extends Command
 
         $filesystem = new Filesystem();
 
-        $outputDirectory = self::getOutputDirectory($config, $outputDir);
+        $outputDirectory = self::getOutputDirectory($config);
 
         // Create or clear the output directory
         if (file_exists($outputDirectory)) {
