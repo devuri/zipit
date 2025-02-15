@@ -55,35 +55,15 @@ return [
 
 ## Usage
 
-After setting up the `.zipit-conf.php` file, use the `zipit` command to create a zip archive.
+After setting up the `.zipit-conf.php` file, use the `zipit` command with optional the path to the configuration file, it will look for config file in the current directory.
 
 ### Running ZipIt
 
 Run **ZipIt** from your project’s root directory:
 
 ```bash
-bin/zipit output.zip
+bin/zipit /path/to/.zipit-conf.php
 ```
-
-- **output.zip**: The name of the zip file to create. If `outputFile` is set in the configuration file, that path will override this argument.
-
-### Specifying a Custom Config File
-
-You can specify a custom configuration file path:
-
-```bash
-bin/zipit output.zip /path/to/.zipit-conf.php
-```
-
-### Copy Command
-
-If you want to copy files instead of zipping them, use the `copy` command:
-
-```bash
-bin/zipit copy source_file destination_file
-```
-
-This will copy `source_file` to `destination_file`.
 
 ### Example
 
@@ -118,7 +98,7 @@ return [
 ];
 ```
 
-Running `bin/zipit archive.zip` will create `project-archive.zip` in the project root if `outputFile` is set. Otherwise, it will create `archive.zip` with `file1.txt`, `file2.txt`, and `directory1/file3.txt`, while excluding `directory1/exclude-this.txt`.
+Running `bin/zipit /path/to/.zipit-conf.php` will create `project-archive.zip` in the project root if `outputFile` is set. Otherwise, it will create an archive with `file1.txt`, `file2.txt`, and `directory1/file3.txt`, while excluding `directory1/exclude-this.txt`.
 
 ## Output
 
@@ -127,7 +107,7 @@ Running `bin/zipit archive.zip` will create `project-archive.zip` in the project
 
 ## Requirements
 
-- PHP  8.1 or higher
+- PHP 8.1 or higher
 
 ## License
 
