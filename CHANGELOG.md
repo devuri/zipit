@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.5](https://github.com/devuri/zipit/compare/v0.2.4...v0.2.5) (2025-02-15)
+
+
+### Bug Fixes
+
+* fix copy command ([839aad9](https://github.com/devuri/zipit/commit/839aad9b421a67511a14556797cf99eb6989b652))
+
+
+### Miscellaneous Chores
+
+* compile ([9e6fd9c](https://github.com/devuri/zipit/commit/9e6fd9c2e4370e5751779d1591c5fa74af658a5c))
+* compiled ([1e85c0d](https://github.com/devuri/zipit/commit/1e85c0d4b8105c30b49903fbf9a8ef2f4d178a80))
+* fix not needed, removed $outputDir ([32f0fcb](https://github.com/devuri/zipit/commit/32f0fcbc121e6432c344ac96a34394231ac397b2))
+
 ## [0.2.4](https://github.com/devuri/zipit/compare/v0.2.3...v0.2.4) (2025-02-15)
 
 
