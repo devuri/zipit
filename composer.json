@@ -83,6 +83,16 @@
             "chmod +x zipit",
             "php zipit --help"
         ],
+		"compile": [
+            "composer install -q",
+            "composer show --tree",
+            "composer test",
+            "composer no-dev -q",
+            "box compile",
+            "box info zipit",
+            "chmod +x zipit",
+            "php zipit --help"
+        ],
         "phpstan": "@php ./vendor/bin/phpstan analyse",
         "psalm": "vendor/bin/psalm",
         "phpdoc": "@php ./bin/phpdoc",

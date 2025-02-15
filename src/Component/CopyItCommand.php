@@ -20,18 +20,17 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
-use ZipArchive;
 
-class ZipItCommand extends Command
+class CopyItCommand extends Command
 {
     use OutputTrait;
 
-    protected static $defaultName = 'zipit';
+    protected static $defaultName = 'copy';
 
     protected function configure(): void
     {
         $this
-            ->setDescription('Creates a zip file based on the configuration in .zipit-conf.php')
+            ->setDescription('Copies files based on the configuration in .zipit-conf.php to a specified output directory')
             ->addArgument('config', InputArgument::OPTIONAL, 'Path to the configuration file (must be .zipit-conf.php)', null);
     }
 
@@ -46,6 +45,7 @@ class ZipItCommand extends Command
             $configFilePath = getcwd() . '/.zipit-conf.php';
         }
 
+        // Validation checks
         if ('.zipit-conf.php' !== basename($configFilePath)) {
             $io->error("The configuration file must be named .zipit-conf.php.");
 
@@ -58,56 +58,41 @@ class ZipItCommand extends Command
             return Command::FAILURE;
         }
 
+        // Load configuration
         $getConfig = require $configFilePath;
-
-        // Fix for the double-dollar bug:
         if ( ! \is_array($getConfig) || ! isset($getConfig['files'], $getConfig['baseDir']) || ! \is_array($getConfig['files'])) {
             $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir' and 'files' keys.");
 
             return Command::FAILURE;
         }
 
+        // Merge with defaults
         $config = $this->setOutputConfig($outputTime, $getConfig);
 
         $baseDir = realpath($config['baseDir']);
         $files   = $config['files'];
         $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
+
         $filesystem = new Filesystem();
 
-        $outputDirectory = $config['outputDir'];
-        $outputFileName = $config['outputFile'] ?? $outputFileName;
-        $outputZipBuild = $outputDirectory . DIRECTORY_SEPARATOR . $outputFileName;
-        if ('zip' !== pathinfo($outputZipBuild, PATHINFO_EXTENSION)) {
-            $io->error("The output file name must have a .zip extension.");
+        $outputDirectory = self::getOutputDirectory($config, $outputDir);
 
-            return Command::FAILURE;
+        // Create or clear the output directory
+        if (file_exists($outputDirectory)) {
+            $filesystem->remove($outputDirectory);
+            $io->writeln('<info>Clear the output directory...</info>');
         }
 
-        $filePath = realpath($outputZipBuild);
-        if ( ! $filesystem->exists($filePath)) {
-            $io->warning("File or directory does not exist.");
-            $filesystem->mkdir($outputDirectory);
-        }
+        $filesystem->mkdir($outputDirectory);
 
-        if (file_exists($outputZipBuild)) {
-            $filesystem->remove($outputZipBuild);
-        }
-
-        $zip = new ZipArchive();
-        if (true !== $zip->open($outputZipBuild, ZipArchive::CREATE)) {
-            $io->error("Failed to create zip file.");
-
-            return Command::FAILURE;
-        }
-
-        $io->title("Creating Zip Archive");
-        $io->writeln('<info>Starting to zip the configured files...</info>');
+        $io->title("Copying Files");
+        $io->writeln('<info>Starting to copy the configured files...</info>');
 
         $progressBar = new ProgressBar($output, \count($files));
         $progressBar->start();
 
-        $filesAdded = [];
-        $totalSize  = 0;
+        $filesCopied = [];
+        $totalSize   = 0;
 
         foreach ($files as $file) {
             $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
@@ -123,41 +108,50 @@ class ZipItCommand extends Command
                 continue;
             }
 
-            $this->addFileToZip($zip, $filePath, $baseDir, $excludes);
-            $filesAdded[] = $filePath;
-            $totalSize += filesize($filePath);
+            // Copy the file/directory
+            $this->copyFileOrDirectory($filesystem, $filePath, $baseDir, $outputDirectory, $excludes, $filesCopied, $totalSize);
+
             $progressBar->advance();
         }
 
         $progressBar->finish();
         $io->newLine();
 
-        $zip->close();
-
-        // Check if the zip file was successfully created and contains files
-        if ( ! file_exists($outputZipBuild) || 0 === \count($filesAdded)) {
-            $io->error("Failed to create a valid zip file. No files were added to the archive.");
+        // If no files were actually copied
+        if (0 === \count($filesCopied)) {
+            $io->warning("No files were copied. Please check your configuration.");
 
             return Command::FAILURE;
         }
 
         // Pretty output with useful information
-        $io->success("Zip file created successfully.");
+        $io->success("Files copied successfully.");
         $io->section("Summary");
-        $io->listing($filesAdded);
+        $io->listing($filesCopied);
 
         $io->text([
-            "<info>Total files:</info> " . \count($filesAdded),
+            "<info>Total files:</info> " . \count($filesCopied),
             "<info>Total size:</info> " . $this->formatSize($totalSize),
-            "<info>Zip file location:</info> " . realpath($outputZipBuild),
+            "<info>Output directory:</info> " . realpath($outputDirectory),
         ]);
 
         return Command::SUCCESS;
     }
 
+    protected static function getOutputDirectory($config, $defaultDir = 'copyOut'): string
+    {
+        $outputDirectory = $config['outputDir'] ?? $defaultDir;
+
+        $directory = explode('.', $outputDirectory);
+        $outputFile = explode('.', $config['outputFile']);
+
+        return DIRECTORY_SEPARATOR . $directory[0] . DIRECTORY_SEPARATOR . $outputFile[0];
+    }
+
     private function isExcluded($filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
+            // If the file path begins with the excluded path
             if (0 === strpos($filePath, $exclude)) {
                 return true;
             }
@@ -166,22 +160,52 @@ class ZipItCommand extends Command
         return false;
     }
 
-    private function addFileToZip(ZipArchive $zip, string $filePath, string $basePath, array $excludes): void
-    {
+    /**
+     * Recursively copies files/directories from $filePath into $outputDirectory.
+     * Also tracks copied files in $filesCopied and accumulates total sizes in $totalSize.
+     */
+    private function copyFileOrDirectory(
+        Filesystem $filesystem,
+        string $filePath,
+        string $basePath,
+        string $outputDirectory,
+        array $excludes,
+        array &$filesCopied,
+        int &$totalSize
+    ): void {
         if (is_dir($filePath)) {
             $iterator = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($filePath, RecursiveDirectoryIterator::SKIP_DOTS)
+                new RecursiveDirectoryIterator($filePath, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
             );
             foreach ($iterator as $item) {
-                if ($this->isExcluded($item->getPathname(), $excludes)) {
+                $currentPath = $item->getPathname();
+                if ($this->isExcluded($currentPath, $excludes)) {
                     continue;
                 }
-                $relativePath = substr($item->getPathname(), \strlen($basePath) + 1);
-                $zip->addFile($item->getPathname(), $relativePath);
+
+                // Build the destination path
+                $relativePath = substr($currentPath, \strlen($basePath) + 1);
+                $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
+
+                if ($item->isDir()) {
+                    $filesystem->mkdir($destination);
+                } else {
+                    $filesystem->copy($currentPath, $destination, true);
+                    $filesCopied[] = $currentPath;
+                    $totalSize += filesize($currentPath);
+                }
             }
         } else {
+            // Single file
             $relativePath = substr($filePath, \strlen($basePath) + 1);
-            $zip->addFile($filePath, $relativePath);
+            $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
+
+            $filesystem->mkdir(\dirname($destination));  // Ensure the directory exists
+            $filesystem->copy($filePath, $destination, true);
+
+            $filesCopied[] = $filePath;
+            $totalSize += filesize($filePath);
         }
     }
 
