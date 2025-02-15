@@ -37,7 +37,8 @@ return [
         'directory1/exclude-this.txt',
         'file-to-exclude.txt',
     ],
-    'outputFile' => __DIR__ . '/project-archive.zip', // Optional: Custom output file path
+    'outputDir' => __DIR__ . '/build', // Optional: Custom output directory path
+    'outputFile' => 'project-archive.zip', // Optional: Custom output file name
 ];
 ```
 
@@ -46,7 +47,8 @@ return [
 - **baseDir**: The root directory for all files to be zipped. Paths in `files` and `exclude` are relative to this directory.
 - **files**: Array of files and directories to include in the zip archive.
 - **exclude**: Array of files and directories to exclude. Paths are also relative to `baseDir`.
-- **outputFile**: (Optional) Specify a custom path and name for the output zip file. If not provided, the file name passed as a command argument will be used.
+- **outputDir**: (Optional) Specify a custom directory for the output. If not provided, the timestamp will be used.
+- **outputFile**: (Optional) Specify a custom name for the output zip file. If not provided, the file name `project-archive-{timestamp}` will be used.
 
 ## Usage
 

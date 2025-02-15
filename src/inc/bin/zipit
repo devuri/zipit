@@ -1,7 +1,8 @@
 #!/usr/bin/env php
 <?php
 
-include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+//include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+require_once \dirname(__FILE__, 4) . '/vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
 use Urisoft\ZipItCommand;

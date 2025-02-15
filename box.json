@@ -1,6 +1,6 @@
 {
   "output": "zipit",
-  "main": "bin/zipit",
+  "main": "src/inc/bin/zipit",
   "directories": ["src", "vendor"],
   "compression": "GZ",
   "exclude-dev-files": true,
