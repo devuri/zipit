@@ -15,9 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run release-please
-        uses: google-github-actions/release-please-action@v3
+        uses: googleapis/release-please-action@v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
           default-branch: main
+      
+      - name: Upload phar to release
+        if: ${{ steps.release.outputs.releases_created }}
+        uses: AButler/upload-release-assets@v2.0
+        with:
+          files: 'zipit;CHANGELOG.md;LICENSE'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ steps.release.outputs.tag_name }}
