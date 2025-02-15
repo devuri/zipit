@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/devuri/zipit/compare/v0.2.3...v0.2.4) (2025-02-15)
+
+
+### Features
+
+* now can use stand-alone phar file `zipit` ([7d87282](https://github.com/devuri/zipit/commit/7d872823126e19d1476df2c4af1a76e5a6e71d54))
+
 ## [0.2.3](https://github.com/devuri/zipit/compare/v0.2.2...v0.2.3) (2025-01-28)
 
 
