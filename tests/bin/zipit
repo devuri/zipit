@@ -1,0 +1,14 @@
+#!/usr/bin/env php
+<?php
+
+require_once \dirname(__FILE__, 3) . '/vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Urisoft\ZipItCommand;
+use Urisoft\CopyItCommand;
+
+$application = new Application();
+$application->add(new ZipItCommand());
+$application->add(new CopyItCommand());
+$application->setDefaultCommand('zipit');
+$application->run();
