@@ -3,8 +3,6 @@
 /*
  * This file is part of the WPframework package.
  *
- * (c) Uriel Wilson
- *
  * The full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
@@ -40,7 +38,7 @@ class ZipItCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $configFilePath = $input->getArgument('config');
-        $outputTime = time();
+        $outputTime = (string) time();
 
         if ( ! $configFilePath) {
             $configFilePath = getcwd() . '/.zipit-conf.php';
@@ -75,7 +73,7 @@ class ZipItCommand extends Command
         $filesystem = new Filesystem();
 
         $outputDirectory = $config['outputDir'];
-        $outputFileName = $config['outputFile'] ?? $outputFileName;
+        $outputFileName = $config['outputFile'];
         $outputZipBuild = $outputDirectory . DIRECTORY_SEPARATOR . $outputFileName;
         if ('zip' !== pathinfo($outputZipBuild, PATHINFO_EXTENSION)) {
             $io->error("The output file name must have a .zip extension.");
