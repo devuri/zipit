@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Tests\Unit;
+namespace Urisoft\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 

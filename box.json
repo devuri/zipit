@@ -1,5 +1,5 @@
 {
-  "output": "zipit",
+  "output": "bin/zipit",
   "main": "src/inc/bin/zipit",
   "directories": ["src", "vendor"],
   "compression": "GZ",

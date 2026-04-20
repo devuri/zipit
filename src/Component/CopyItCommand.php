@@ -3,8 +3,6 @@
 /*
  * This file is part of the WPframework package.
  *
- * (c) Uriel Wilson
- *
  * The full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
@@ -39,7 +37,7 @@ class CopyItCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $configFilePath = $input->getArgument('config');
-        $outputTime = time();
+        $outputTime = (string) time();
 
         if ( ! $configFilePath) {
             $configFilePath = getcwd() . '/.zipit-conf.php';
