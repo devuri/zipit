@@ -1,21 +1,22 @@
 # ZipIt
 
-**ZipIt** is a simple, flexible PHP CLI tool for creating zip archives, providing features like progress bars, customizable output locations, and recursive file archiving. It now includes a `copy` command to duplicate files instead of zipping them.
+**ZipIt** is a simple, flexible PHP CLI tool for creating zip archives and copying build files. It features progress bars, customizable output locations, recursive file archiving, and file remapping — so files can be stored under one path locally but land at a different path in the output.
 
 ## Features
 
-- **Standalone Executable**: ZipIt is now a fully compiled executable file, which can be stored in your project (e.g., `bin/zipit`).
+- **Standalone Executable**: ZipIt is a fully compiled executable, ready to drop into your project (e.g., `bin/zipit`).
 - **Configurable**: Define the base directory, files to include, and exclusions in a `.zipit-conf.php` file.
+- **File Remapping**: Map a source file to a different destination path in the output using `'source' => 'dest'` syntax.
 - **Customizable Output**: Optionally specify the output file name and path in the configuration file.
 - **Recursive Archiving**: Automatically includes directories and their contents.
-- **Styled Output**: Uses color-coded messages for warnings, errors, and success feedback.
-- **Progress Bar**: Visual progress for long-running operations.
-- **Custom Config Path**: Option to specify a custom configuration file path.
-- **Copy Command**: Use `bin/zipit copy` to copy files instead of zipping them.
+- **Styled Output**: Color-coded messages for warnings, errors, and success feedback.
+- **Progress Bar**: Visual progress tracking for long-running operations.
+- **Custom Config Path**: Optionally specify a configuration file path as a CLI argument.
+- **Copy Command**: Use `bin/zipit copy` to copy files to a directory instead of zipping them.
 
 ## Installation
 
-Download the `zipit` executable and place it in your project directory, for example:
+Download the `zipit` executable and place it in your project:
 
 ```bash
 mv zipit bin/zipit
@@ -24,86 +25,127 @@ chmod +x bin/zipit
 
 ## Configuration
 
-Create a `.zipit-conf.php` file in your project root directory. This file should return an array with the following configuration keys:
+Create a `.zipit-conf.php` file in your project root. This file must return an array with the following keys:
 
 ```php
 <?php
-
 return [
-    'baseDir' => __DIR__, // The base directory where files are located
-    'files' => [          // List of files and directories to include
+    'baseDir'    => __DIR__,
+    'files'      => [
         'file1.txt',
         'directory1',
-        'file2.txt',
+        'subdirectory/file2.txt',
     ],
-    'exclude' => [        // List of files and directories to exclude
+    'exclude'    => [
         'directory1/exclude-this.txt',
-        'file-to-exclude.txt',
     ],
-    'outputDir' => __DIR__ . '/build', // Optional: Custom output directory path
-    'outputFile' => 'project-archive.zip', // Optional: Custom output file name
+    'outputDir'  => __DIR__ . '/build',
+    'outputFile' => 'project-archive.zip',
 ];
 ```
 
-### Configuration Details
+### Configuration Keys
 
-- **baseDir**: The root directory for all files to be zipped. Paths in `files` and `exclude` are relative to this directory.
-- **files**: Array of files and directories to include in the zip archive.
-- **exclude**: Array of files and directories to exclude. Paths are also relative to `baseDir`.
-- **outputDir**: (Optional) Specify a custom directory for the output. If not provided, the timestamp will be used.
-- **outputFile**: (Optional) Specify a custom name for the output zip file. If not provided, the file name `project-archive-{timestamp}` will be used.
+| Key | Required | Description |
+|---|---|---|
+| `baseDir` | Yes | Root directory for all source paths. All paths in `files` and `exclude` are relative to this. |
+| `files` | Yes | Files and directories to include. Supports plain strings and `source => dest` remapping (see below). |
+| `exclude` | No | Files and directories to exclude. Paths are relative to `baseDir`. |
+| `outputDir` | No | Output directory. Defaults to a timestamped directory if not set. |
+| `outputFile` | No | Output filename. Defaults to `project-archive-{timestamp}.zip` if not set. |
+
+### File Remapping
+
+By default, every entry in `files` preserves its path relative to `baseDir` in the output. If you need a file to land at a **different path** in the output, use `'source' => 'destination'` syntax:
+
+```php
+'files' => [
+    'index.php',
+    'src',
+    'assets/dist/styles.css' => 'styles.css',
+    'config/defaults.php'    => 'config.php',
+],
+```
+
+Plain string entries and remapped entries can be mixed freely. Remapping only applies to individual files; directories always recurse using their natural relative path.
 
 ## Usage
 
-After setting up the `.zipit-conf.php` file, use the `zipit` command with optional the path to the configuration file, it will look for config file in the current directory.
-
-### Running ZipIt
-
-Run **ZipIt** from your project’s root directory:
+Run **ZipIt** from your project root. It will look for `.zipit-conf.php` in the current directory by default, or you can pass a path explicitly:
 
 ```bash
+# Use config in current directory
+bin/zipit
+
+# Use a config file at a specific path
 bin/zipit /path/to/.zipit-conf.php
 ```
 
-### Example
+### Copy Command
 
-Suppose you have the following directory structure:
+To copy files to a directory instead of creating a zip archive:
+
+```bash
+bin/zipit copy
+
+# With explicit config path
+bin/zipit copy /path/to/.zipit-conf.php
+```
+
+The `copy` command uses the same `.zipit-conf.php` configuration, including file remapping.
+
+## Example
+
+Given this directory structure:
 
 ```
 /my-project
-  |-- file1.txt
-  |-- file2.txt
-  |-- /directory1
-      |-- file3.txt
-      |-- exclude-this.txt
+  |-- index.php
+  |-- readme.txt
+  |-- src/
+  |-- assets/
+  |   |-- dist/
+  |       |-- styles.css
+  |-- directory1/
+  |   |-- file3.txt
+  |   |-- exclude-this.txt
   |-- .zipit-conf.php
 ```
 
-In `.zipit-conf.php`:
+With this `.zipit-conf.php`:
 
 ```php
 <?php
-
 return [
-    'baseDir' => __DIR__,
-    'files' => [
-        'file1.txt',
-        'file2.txt',
+    'baseDir'    => __DIR__,
+    'files'      => [
+        'index.php',
+        'readme.txt',
+        'src',
         'directory1',
+        'assets/dist/styles.css' => 'styles.css',
     ],
-    'exclude' => [
+    'exclude'    => [
         'directory1/exclude-this.txt',
     ],
-    'outputFile' => __DIR__ . '/project-archive.zip', // Optional: Custom output file name
+    'outputDir'  => __DIR__ . '/build',
+    'outputFile' => 'my-project.zip',
 ];
 ```
 
-Running `bin/zipit /path/to/.zipit-conf.php` will create `project-archive.zip` in the project root if `outputFile` is set. Otherwise, it will create an archive with `file1.txt`, `file2.txt`, and `directory1/file3.txt`, while excluding `directory1/exclude-this.txt`.
+Running `bin/zipit` will produce `build/my-project.zip` containing:
+
+```
+index.php
+readme.txt
+src/
+directory1/file3.txt        ← exclude-this.txt is omitted
+styles.css                  ← remapped from assets/dist/styles.css
+```
 
 ## Output
 
-- **Styled Messages**: Errors, warnings, and notes are shown in color for easy readability.
-- **Progress Bar**: Tracks the zipping process to keep you informed.
+On completion, ZipIt prints a summary including the full list of files processed, total file count, total size, and the output location. Warnings are shown for any configured files that could not be found — and the command exits with a non-zero status if any entries were missing, making it safe to use in CI pipelines.
 
 ## Requirements
 
@@ -111,7 +153,8 @@ Running `bin/zipit /path/to/.zipit-conf.php` will create `project-archive.zip` i
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
 
 Enjoy easy archiving with **ZipIt**!
-
