@@ -116,29 +116,41 @@ class ZipItCommand extends Command
         $missingFiles = [];
         $totalSize    = 0;
 
-        foreach ($files as $file) {
-            // Bug fix: resolve via file_exists() before realpath() so missing files
-            // are tracked and reported, and the command returns FAILURE if any are absent.
-            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $file;
+        // Supports two entry formats:
+        //   'path/to/file.php'                  — plain string, destination mirrors source path
+        //   'path/to/source.php' => 'dest.php'  — key=>value, destination is remapped inside the zip
+        foreach ($files as $source => $dest) {
+            if (\is_int($source)) {
+                // Plain string entry: source and destination path are the same.
+                $source       = $dest;
+                $destOverride = null;
+            } else {
+                // Mapped entry: $source is the file to read, $dest is where it lands in the zip.
+                $destOverride = $dest;
+            }
+
+            // Bug fix: check file_exists() before realpath() so missing files are tracked
+            // and the command returns FAILURE rather than silently succeeding.
+            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $source;
             $filePath = file_exists($rawPath) ? realpath($rawPath) : false;
 
             if (false === $filePath || ! $filesystem->exists($filePath)) {
-                $io->warning("File or directory '$file' does not exist and will be skipped.");
-                $missingFiles[] = $file;
+                $io->warning("File or directory '$source' does not exist and will be skipped.");
+                $missingFiles[] = $source;
                 $progressBar->advance();
 
                 continue;
             }
 
             if ($this->isExcluded($filePath, $excludes)) {
-                $io->note("Skipping excluded file or directory: '$file'");
+                $io->note("Skipping excluded file or directory: '$source'");
                 $progressBar->advance();
 
                 continue;
             }
 
-            $this->addFileToZip($zip, $filePath, $baseDir, $excludes);
-            $filesAdded[] = $filePath;
+            $this->addFileToZip($zip, $filePath, $baseDir, $excludes, $destOverride);
+            $filesAdded[] = $destOverride ? "$source -> $destOverride" : $filePath;
 
             // Bug fix: only call filesize() on actual files, not directories.
             if (is_file($filePath)) {
@@ -169,7 +181,7 @@ class ZipItCommand extends Command
             "<info>Zip file location:</info> " . realpath($outputZipBuild),
         ]);
 
-        // Bug fix surface missing files and fail if any were not found.
+        // Bug fix (cont.): surface missing files and fail if any were not found.
         if ( ! empty($missingFiles)) {
             $io->warning("The following configured entries were not found and were skipped:");
             $io->listing($missingFiles);
@@ -180,7 +192,7 @@ class ZipItCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function isExcluded($filePath, array $excludes): bool
+    private function isExcluded(string $filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
             if (0 === strpos($filePath, $exclude)) {
@@ -191,7 +203,14 @@ class ZipItCommand extends Command
         return false;
     }
 
-    private function addFileToZip(ZipArchive $zip, string $filePath, string $basePath, array $excludes): void
+    /**
+     * Adds a file or directory to the zip archive.
+     *
+     * @param string|null $destOverride When set, the file is stored under this path inside the
+     *                                  zip instead of its path relative to $basePath. Only applies
+     *                                  to single files; directories always use their relative path.
+     */
+    private function addFileToZip(ZipArchive $zip, string $filePath, string $basePath, array $excludes, ?string $destOverride = null): void
     {
         if (is_dir($filePath)) {
             $iterator = new RecursiveIteratorIterator(
@@ -205,12 +224,12 @@ class ZipItCommand extends Command
                 $zip->addFile($item->getPathname(), $relativePath);
             }
         } else {
-            $relativePath = substr($filePath, \strlen($basePath) + 1);
+            $relativePath = $destOverride ?? substr($filePath, \strlen($basePath) + 1);
             $zip->addFile($filePath, $relativePath);
         }
     }
 
-    private function formatSize($size): string
+    private function formatSize(int $size): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $unit = 0;
