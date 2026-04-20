@@ -58,7 +58,6 @@ class ZipItCommand extends Command
 
         $getConfig = require $configFilePath;
 
-        // Fix for the double-dollar bug:
         if ( ! \is_array($getConfig) || ! isset($getConfig['files'], $getConfig['baseDir']) || ! \is_array($getConfig['files'])) {
             $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir' and 'files' keys.");
 
@@ -68,21 +67,30 @@ class ZipItCommand extends Command
         $config = $this->setOutputConfig($outputTime, $getConfig);
 
         $baseDir = realpath($config['baseDir']);
-        $files   = $config['files'];
-        $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
+
+        // Bug fix: filter out false values from realpath() calls on non-existent exclude paths.
+        $excludes = array_values(array_filter(
+            array_map(
+                'realpath',
+                array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude'])
+            )
+        ));
+
+        $files      = $config['files'];
         $filesystem = new Filesystem();
 
         $outputDirectory = $config['outputDir'];
-        $outputFileName = $config['outputFile'];
-        $outputZipBuild = $outputDirectory . DIRECTORY_SEPARATOR . $outputFileName;
+        $outputFileName  = $config['outputFile'];
+        $outputZipBuild  = $outputDirectory . DIRECTORY_SEPARATOR . $outputFileName;
+
         if ('zip' !== pathinfo($outputZipBuild, PATHINFO_EXTENSION)) {
             $io->error("The output file name must have a .zip extension.");
 
             return Command::FAILURE;
         }
 
-        $filePath = realpath($outputZipBuild);
-        if ( ! $filesystem->exists($filePath)) {
+        $resolvedZipPath = realpath($outputZipBuild);
+        if ( ! $filesystem->exists($resolvedZipPath)) {
             $io->warning("File or directory does not exist.");
             $filesystem->mkdir($outputDirectory);
         }
@@ -104,26 +112,39 @@ class ZipItCommand extends Command
         $progressBar = new ProgressBar($output, \count($files));
         $progressBar->start();
 
-        $filesAdded = [];
-        $totalSize  = 0;
+        $filesAdded   = [];
+        $missingFiles = [];
+        $totalSize    = 0;
 
         foreach ($files as $file) {
-            $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
-            if ( ! $filePath || ! $filesystem->exists($filePath)) {
-                $io->warning("File or directory '$file' does not exist.");
+            // Bug fix: resolve via file_exists() before realpath() so missing files
+            // are tracked and reported, and the command returns FAILURE if any are absent.
+            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $file;
+            $filePath = file_exists($rawPath) ? realpath($rawPath) : false;
+
+            if (false === $filePath || ! $filesystem->exists($filePath)) {
+                $io->warning("File or directory '$file' does not exist and will be skipped.");
+                $missingFiles[] = $file;
+                $progressBar->advance();
 
                 continue;
             }
 
             if ($this->isExcluded($filePath, $excludes)) {
                 $io->note("Skipping excluded file or directory: '$file'");
+                $progressBar->advance();
 
                 continue;
             }
 
             $this->addFileToZip($zip, $filePath, $baseDir, $excludes);
             $filesAdded[] = $filePath;
-            $totalSize += filesize($filePath);
+
+            // Bug fix: only call filesize() on actual files, not directories.
+            if (is_file($filePath)) {
+                $totalSize += filesize($filePath);
+            }
+
             $progressBar->advance();
         }
 
@@ -132,14 +153,12 @@ class ZipItCommand extends Command
 
         $zip->close();
 
-        // Check if the zip file was successfully created and contains files
         if ( ! file_exists($outputZipBuild) || 0 === \count($filesAdded)) {
             $io->error("Failed to create a valid zip file. No files were added to the archive.");
 
             return Command::FAILURE;
         }
 
-        // Pretty output with useful information
         $io->success("Zip file created successfully.");
         $io->section("Summary");
         $io->listing($filesAdded);
@@ -149,6 +168,14 @@ class ZipItCommand extends Command
             "<info>Total size:</info> " . $this->formatSize($totalSize),
             "<info>Zip file location:</info> " . realpath($outputZipBuild),
         ]);
+
+        // Bug fix surface missing files and fail if any were not found.
+        if ( ! empty($missingFiles)) {
+            $io->warning("The following configured entries were not found and were skipped:");
+            $io->listing($missingFiles);
+
+            return Command::FAILURE;
+        }
 
         return Command::SUCCESS;
     }
