@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.9](https://github.com/devuri/zipit/compare/v0.2.8...v0.2.9) (2026-04-20)
+
+
+### Bug Fixes
+
+* bin/zipit update ([5052053](https://github.com/devuri/zipit/commit/5052053c8d12248821a24dbd52e31f32cb9d2b94))
+* bin/zipit update ([ee12b01](https://github.com/devuri/zipit/commit/ee12b019138eafe4e3cf8c463cb9ce5a30a293f9))
+
 ## [0.2.8](https://github.com/devuri/zipit/compare/v0.2.7...v0.2.8) (2026-04-20)
 
 
