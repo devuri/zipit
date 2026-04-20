@@ -43,7 +43,6 @@ class CopyItCommand extends Command
             $configFilePath = getcwd() . '/.zipit-conf.php';
         }
 
-        // Validation checks
         if ('.zipit-conf.php' !== basename($configFilePath)) {
             $io->error("The configuration file must be named .zipit-conf.php.");
 
@@ -56,26 +55,31 @@ class CopyItCommand extends Command
             return Command::FAILURE;
         }
 
-        // Load configuration
         $getConfig = require $configFilePath;
+
         if ( ! \is_array($getConfig) || ! isset($getConfig['files'], $getConfig['baseDir']) || ! \is_array($getConfig['files'])) {
             $io->error("Invalid configuration file. The .zipit-conf.php file must return an array with 'baseDir' and 'files' keys.");
 
             return Command::FAILURE;
         }
 
-        // Merge with defaults
         $config = $this->setOutputConfig($outputTime, $getConfig);
 
         $baseDir = realpath($config['baseDir']);
-        $files   = $config['files'];
-        $excludes = array_map('realpath', array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude']));
 
+        // Bug fix: filter out false values from realpath() calls on non-existent exclude paths.
+        $excludes = array_values(array_filter(
+            array_map(
+                'realpath',
+                array_map(fn ($file) => $baseDir . DIRECTORY_SEPARATOR . $file, $config['exclude'])
+            )
+        ));
+
+        $files      = $config['files'];
         $filesystem = new Filesystem();
 
         $outputDirectory = self::getOutputDirectory($config);
 
-        // Create or clear the output directory
         if (file_exists($outputDirectory)) {
             $filesystem->remove($outputDirectory);
             $io->writeln('<info>Clear the output directory...</info>');
@@ -89,24 +93,31 @@ class CopyItCommand extends Command
         $progressBar = new ProgressBar($output, \count($files));
         $progressBar->start();
 
-        $filesCopied = [];
-        $totalSize   = 0;
+        $filesCopied  = [];
+        $missingFiles = [];
+        $totalSize    = 0;
 
         foreach ($files as $file) {
-            $filePath = realpath($baseDir . DIRECTORY_SEPARATOR . $file);
-            if ( ! $filePath || ! $filesystem->exists($filePath)) {
-                $io->warning("File or directory '$file' does not exist.");
+            // Bug fix: resolve via file_exists() before realpath() so missing files
+            // are tracked and reported, and the command returns FAILURE if any are absent.
+            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $file;
+            $filePath = file_exists($rawPath) ? realpath($rawPath) : false;
+
+            if (false === $filePath || ! $filesystem->exists($filePath)) {
+                $io->warning("File or directory '$file' does not exist and will be skipped.");
+                $missingFiles[] = $file;
+                $progressBar->advance();
 
                 continue;
             }
 
             if ($this->isExcluded($filePath, $excludes)) {
                 $io->note("Skipping excluded file or directory: '$file'");
+                $progressBar->advance();
 
                 continue;
             }
 
-            // Copy the file/directory
             $this->copyFileOrDirectory($filesystem, $filePath, $baseDir, $outputDirectory, $excludes, $filesCopied, $totalSize);
 
             $progressBar->advance();
@@ -115,14 +126,12 @@ class CopyItCommand extends Command
         $progressBar->finish();
         $io->newLine();
 
-        // If no files were actually copied
         if (0 === \count($filesCopied)) {
             $io->warning("No files were copied. Please check your configuration.");
 
             return Command::FAILURE;
         }
 
-        // Pretty output with useful information
         $io->success("Files copied successfully.");
         $io->section("Summary");
         $io->listing($filesCopied);
@@ -133,6 +142,14 @@ class CopyItCommand extends Command
             "<info>Output directory:</info> " . realpath($outputDirectory),
         ]);
 
+        // Bug fix: surface missing files and fail if any were not found.
+        if ( ! empty($missingFiles)) {
+            $io->warning("The following configured entries were not found and were skipped:");
+            $io->listing($missingFiles);
+
+            return Command::FAILURE;
+        }
+
         return Command::SUCCESS;
     }
 
@@ -140,7 +157,7 @@ class CopyItCommand extends Command
     {
         $outputDirectory = $config['outputDir'] ?? $defaultDir;
 
-        $directory = explode('.', $outputDirectory);
+        $directory  = explode('.', $outputDirectory);
         $outputFile = explode('.', $config['outputFile']);
 
         return DIRECTORY_SEPARATOR . $directory[0] . DIRECTORY_SEPARATOR . $outputFile[0];
@@ -149,7 +166,6 @@ class CopyItCommand extends Command
     private function isExcluded($filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
-            // If the file path begins with the excluded path
             if (0 === strpos($filePath, $exclude)) {
                 return true;
             }
@@ -182,7 +198,6 @@ class CopyItCommand extends Command
                     continue;
                 }
 
-                // Build the destination path
                 $relativePath = substr($currentPath, \strlen($basePath) + 1);
                 $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
 
@@ -191,15 +206,16 @@ class CopyItCommand extends Command
                 } else {
                     $filesystem->copy($currentPath, $destination, true);
                     $filesCopied[] = $currentPath;
+
+                    // Bug 2 fix: only call filesize() on actual files, not directories.
                     $totalSize += filesize($currentPath);
                 }
             }
         } else {
-            // Single file
             $relativePath = substr($filePath, \strlen($basePath) + 1);
             $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
 
-            $filesystem->mkdir(\dirname($destination));  // Ensure the directory exists
+            $filesystem->mkdir(\dirname($destination));
             $filesystem->copy($filePath, $destination, true);
 
             $filesCopied[] = $filePath;
