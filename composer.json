@@ -79,7 +79,7 @@
             "composer lint",
             "composer no-dev -q",
             "box compile",
-            "box info zipit",
+            "box info bin/zipit",
             "chmod +x bin/zipit",
             "php bin/zipit --help"
         ],
