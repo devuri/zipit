@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.8](https://github.com/devuri/zipit/compare/v0.2.7...v0.2.8) (2026-04-20)
+
+
+### Bug Fixes
+
+* Supports two entry formats ([4fbe6f9](https://github.com/devuri/zipit/commit/4fbe6f96b8aa3f48546c9eb7b3a164976dfc5641))
+* Supports two entry formats ([731623d](https://github.com/devuri/zipit/commit/731623d5d46d1c8cf8971aaf1c5f34ac8e22faa0))
+
 ## [0.2.7](https://github.com/devuri/zipit/compare/v0.2.6...v0.2.7) (2026-04-20)
 
 
