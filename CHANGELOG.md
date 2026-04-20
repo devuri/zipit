@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.7](https://github.com/devuri/zipit/compare/v0.2.6...v0.2.7) (2026-04-20)
+
+
+### Bug Fixes
+
+* bug fix on path ([0ddfb40](https://github.com/devuri/zipit/commit/0ddfb403a2eb244b0122e85d75645dc6013268bc))
+* bug fix on path ([030600c](https://github.com/devuri/zipit/commit/030600c296147c2e8c05c8e3cbebac8f4c213608))
+
 ## [0.2.6](https://github.com/devuri/zipit/compare/v0.2.5...v0.2.6) (2026-04-20)
 
 
