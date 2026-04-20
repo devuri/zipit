@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6](https://github.com/devuri/zipit/compare/v0.2.5...v0.2.6) (2026-04-20)
+
+
+### Bug Fixes
+
+* save bin dir ([4ac76c0](https://github.com/devuri/zipit/commit/4ac76c0cb0d8b18b96b354ea17eef694aaac630a))
+* save bin dir ([689def4](https://github.com/devuri/zipit/commit/689def47bfbc9ef7a8136486025b5fd873cff7d4))
+
 ## [0.2.5](https://github.com/devuri/zipit/compare/v0.2.4...v0.2.5) (2025-02-15)
 
 
