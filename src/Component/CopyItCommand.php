@@ -97,28 +97,40 @@ class CopyItCommand extends Command
         $missingFiles = [];
         $totalSize    = 0;
 
-        foreach ($files as $file) {
-            // Bug fix: resolve via file_exists() before realpath() so missing files
-            // are tracked and reported, and the command returns FAILURE if any are absent.
-            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $file;
+        // Supports two entry formats:
+        //   'path/to/file.php'                  — plain string, destination mirrors source path
+        //   'path/to/source.php' => 'dest.php'  — key=>value, destination is remapped in output dir
+        foreach ($files as $source => $dest) {
+            if (\is_int($source)) {
+                // Plain string entry: source and destination path are the same.
+                $source       = $dest;
+                $destOverride = null;
+            } else {
+                // Mapped entry: $source is the file to read, $dest is where it lands in the output.
+                $destOverride = $dest;
+            }
+
+            // Bug fix: check file_exists() before realpath() so missing files are tracked
+            // and the command returns FAILURE rather than silently succeeding.
+            $rawPath  = $baseDir . DIRECTORY_SEPARATOR . $source;
             $filePath = file_exists($rawPath) ? realpath($rawPath) : false;
 
             if (false === $filePath || ! $filesystem->exists($filePath)) {
-                $io->warning("File or directory '$file' does not exist and will be skipped.");
-                $missingFiles[] = $file;
+                $io->warning("File or directory '$source' does not exist and will be skipped.");
+                $missingFiles[] = $source;
                 $progressBar->advance();
 
                 continue;
             }
 
             if ($this->isExcluded($filePath, $excludes)) {
-                $io->note("Skipping excluded file or directory: '$file'");
+                $io->note("Skipping excluded file or directory: '$source'");
                 $progressBar->advance();
 
                 continue;
             }
 
-            $this->copyFileOrDirectory($filesystem, $filePath, $baseDir, $outputDirectory, $excludes, $filesCopied, $totalSize);
+            $this->copyFileOrDirectory($filesystem, $filePath, $baseDir, $outputDirectory, $excludes, $filesCopied, $totalSize, $destOverride);
 
             $progressBar->advance();
         }
@@ -163,7 +175,7 @@ class CopyItCommand extends Command
         return DIRECTORY_SEPARATOR . $directory[0] . DIRECTORY_SEPARATOR . $outputFile[0];
     }
 
-    private function isExcluded($filePath, array $excludes): bool
+    private function isExcluded(string $filePath, array $excludes): bool
     {
         foreach ($excludes as $exclude) {
             if (0 === strpos($filePath, $exclude)) {
@@ -177,6 +189,11 @@ class CopyItCommand extends Command
     /**
      * Recursively copies files/directories from $filePath into $outputDirectory.
      * Also tracks copied files in $filesCopied and accumulates total sizes in $totalSize.
+     *
+     * @param string|null $destOverride When set, the file is placed at this path inside
+     *                                  $outputDirectory instead of its path relative to $basePath.
+     *                                  Only applies to single files; directories always use their
+     *                                  relative path.
      */
     private function copyFileOrDirectory(
         Filesystem $filesystem,
@@ -185,7 +202,8 @@ class CopyItCommand extends Command
         string $outputDirectory,
         array $excludes,
         array &$filesCopied,
-        int &$totalSize
+        int &$totalSize,
+        ?string $destOverride = null
     ): void {
         if (is_dir($filePath)) {
             $iterator = new RecursiveIteratorIterator(
@@ -207,23 +225,23 @@ class CopyItCommand extends Command
                     $filesystem->copy($currentPath, $destination, true);
                     $filesCopied[] = $currentPath;
 
-                    // Bug 2 fix: only call filesize() on actual files, not directories.
+                    // Bug fix: only call filesize() on actual files, not directories.
                     $totalSize += filesize($currentPath);
                 }
             }
         } else {
-            $relativePath = substr($filePath, \strlen($basePath) + 1);
+            $relativePath = $destOverride ?? substr($filePath, \strlen($basePath) + 1);
             $destination  = $outputDirectory . DIRECTORY_SEPARATOR . $relativePath;
 
             $filesystem->mkdir(\dirname($destination));
             $filesystem->copy($filePath, $destination, true);
 
-            $filesCopied[] = $filePath;
+            $filesCopied[] = $destOverride ? "$filePath -> $destination" : $filePath;
             $totalSize += filesize($filePath);
         }
     }
 
-    private function formatSize($size): string
+    private function formatSize(int $size): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $unit = 0;
