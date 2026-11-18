@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.10](https://github.com/devuri/zipit/compare/v0.2.9...v0.2.10) (2026-11-18)
+
+
+### Bug Fixes
+
+* **zipit:** add archive root support and improve build reliability ([b0fd4d0](https://github.com/devuri/zipit/commit/b0fd4d009b34c326139c7e4d6e205da05815268b))
+* **zipit:** add archive root support and improve build reliability ([63439f2](https://github.com/devuri/zipit/commit/63439f22b0b801fa73da783bbf3d160bea0c12de))
+
 ## [0.2.9](https://github.com/devuri/zipit/compare/v0.2.8...v0.2.9) (2026-04-20)
 
 
