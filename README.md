@@ -7,6 +7,7 @@
 - **Standalone Executable**: ZipIt is a fully compiled executable, ready to drop into your project (e.g., `bin/zipit`).
 - **Configurable**: Define the base directory, files to include, and exclusions in a `.zipit-conf.php` file.
 - **File Remapping**: Map a source file to a different destination path in the output using `'source' => 'dest'` syntax.
+- **Optional Archive Root**: Place ZIP entries under a named directory with `archiveRoot`.
 - **Customizable Output**: Optionally specify the output file name and path in the configuration file.
 - **Recursive Archiving**: Automatically includes directories and their contents.
 - **Styled Output**: Color-coded messages for warnings, errors, and success feedback.
@@ -41,6 +42,7 @@ return [
     ],
     'outputDir'  => __DIR__ . '/build',
     'outputFile' => 'project-archive.zip',
+    // 'archiveRoot' => 'my-project', // Optional; ZIP only
 ];
 ```
 
@@ -53,6 +55,7 @@ return [
 | `exclude` | No | Files and directories to exclude. Paths are relative to `baseDir`. |
 | `outputDir` | No | Output directory. Defaults to a timestamped directory if not set. |
 | `outputFile` | No | Output filename. Defaults to `project-archive-{timestamp}.zip` if not set. |
+| `archiveRoot` | No | Optional directory prefix inside the ZIP (e.g., `release`). Omitted or empty keeps the default flat layout; ignored by `copy`. |
 
 ### File Remapping
 
@@ -68,6 +71,16 @@ By default, every entry in `files` preserves its path relative to `baseDir` in t
 ```
 
 Plain string entries and remapped entries can be mixed freely. Remapping only applies to individual files; directories always recurse using their natural relative path.
+
+### Archive Root (Optional)
+
+To place every archived entry inside a directory, add an `archiveRoot` setting to `.zipit-conf.php`:
+
+```php
+'archiveRoot' => 'release',
+```
+
+For example, entries normally stored as `index.php` and `src/module.php` will be stored as `release/index.php` and `release/src/module.php`. The prefix also applies to remapped entries. If `archiveRoot` is omitted or empty, entries retain their original paths. The `copy` command ignores this option.
 
 ## Usage
 
@@ -145,7 +158,7 @@ styles.css                  ← remapped from assets/dist/styles.css
 
 ## Output
 
-On completion, ZipIt prints a summary including the full list of files processed, total file count, total size, and the output location. Warnings are shown for any configured files that could not be found — and the command exits with a non-zero status if any entries were missing, making it safe to use in CI pipelines.
+On completion, ZipIt prints a summary with the file count, total size, and output location. Archives are verified before they replace an existing ZIP; failed builds return a non-zero status and leave the previous output intact.
 
 ## Requirements
 
