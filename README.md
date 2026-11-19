@@ -7,8 +7,8 @@
 - **Standalone Executable**: ZipIt is a fully compiled executable, ready to drop into your project (e.g., `bin/zipit`).
 - **Configurable**: Define the base directory, files to include, and exclusions in a `.zipit-conf.php` file.
 - **File Remapping**: Map a source file to a different destination path in the output using `'source' => 'dest'` syntax.
-- **Optional Archive Root**: Place ZIP entries under a named directory with `archiveRoot`.
 - **Customizable Output**: Optionally specify the output file name and path in the configuration file.
+- **Optional Archive Root**: Place ZIP entries beneath a single named folder without changing source paths.
 - **Recursive Archiving**: Automatically includes directories and their contents.
 - **Styled Output**: Color-coded messages for warnings, errors, and success feedback.
 - **Progress Bar**: Visual progress tracking for long-running operations.
@@ -42,7 +42,7 @@ return [
     ],
     'outputDir'  => __DIR__ . '/build',
     'outputFile' => 'project-archive.zip',
-    // 'archiveRoot' => 'my-project', // Optional; ZIP only
+	// 'archiveRoot' => 'my-project', // Optional; ZIP only
 ];
 ```
 
@@ -53,9 +53,9 @@ return [
 | `baseDir` | Yes | Root directory for all source paths. All paths in `files` and `exclude` are relative to this. |
 | `files` | Yes | Files and directories to include. Supports plain strings and `source => dest` remapping (see below). |
 | `exclude` | No | Files and directories to exclude. Paths are relative to `baseDir`. |
+| `archiveRoot` | No | Single folder name to prefix to every ZIP entry; omitted by default. Ignored by `copy`. |
 | `outputDir` | No | Output directory. Defaults to a timestamped directory if not set. |
 | `outputFile` | No | Output filename. Defaults to `project-archive-{timestamp}.zip` if not set. |
-| `archiveRoot` | No | Optional directory prefix inside the ZIP (e.g., `release`). Omitted or empty keeps the default flat layout; ignored by `copy`. |
 
 ### File Remapping
 
@@ -72,15 +72,16 @@ By default, every entry in `files` preserves its path relative to `baseDir` in t
 
 Plain string entries and remapped entries can be mixed freely. Remapping only applies to individual files; directories always recurse using their natural relative path.
 
-### Archive Root (Optional)
+### Optional Archive Root
 
-To place every archived entry inside a directory, add an `archiveRoot` setting to `.zipit-conf.php`:
+To place all ZIP members under one folder, add `'archiveRoot' => 'release'` to the configuration:
 
 ```php
 'archiveRoot' => 'release',
+'files' => ['index.php', 'src'],
 ```
 
-For example, entries normally stored as `index.php` and `src/module.php` will be stored as `release/index.php` and `release/src/module.php`. The prefix also applies to remapped entries. If `archiveRoot` is omitted or empty, entries retain their original paths. The `copy` command ignores this option.
+The archive then contains `release/index.php` and `release/src/...`. Omitting `archiveRoot` preserves the existing flat archive layout. The `copy` command ignores this option.
 
 ## Usage
 
@@ -158,7 +159,7 @@ styles.css                  ← remapped from assets/dist/styles.css
 
 ## Output
 
-On completion, ZipIt prints a summary with the file count, total size, and output location. Archives are verified before they replace an existing ZIP; failed builds return a non-zero status and leave the previous output intact.
+On completion, ZipIt prints a summary including the full list of files processed, total file count, total size, and the output location. Warnings are shown for any configured files that could not be found — and the command exits with a non-zero status if any entries were missing, making it safe to use in CI pipelines.
 
 ## Requirements
 
