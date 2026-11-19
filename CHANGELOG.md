@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.11](https://github.com/devuri/zipit/compare/v0.2.10...v0.2.11) (2026-11-19)
+
+
+### Bug Fixes
+
+* better archiveRoot implmentation ([fc41dd1](https://github.com/devuri/zipit/commit/fc41dd1ce9335a4c0f86612d4a114722ea943d0f))
+
+
+### Miscellaneous Chores
+
+* new zipit ([f3576e0](https://github.com/devuri/zipit/commit/f3576e012041df86137055dd8c69bf46c2e6e11b))
+
 ## [0.2.10](https://github.com/devuri/zipit/compare/v0.2.9...v0.2.10) (2026-11-18)
 
 
